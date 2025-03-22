@@ -1,10 +1,11 @@
 {
     "name": "donstop",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "그냥... 이상한 운영체제",
     "main": "build/app/index.js",
     "scripts": {
-        "dev": "ts-node src/app/index.ts"
+        "dev": "ts-node src/app/index.ts",
+        "build": "tsc"
     },
     "repository": {
         "type": "git",
