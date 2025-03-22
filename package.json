@@ -1,0 +1,35 @@
+{
+    "name": "donstop",
+    "version": "0.1.0",
+    "description": "그냥... 이상한 운영체제",
+    "main": "build/app/index.js",
+    "scripts": {
+        "dev": "ts-node src/app/index.ts"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/inf-hubof/donstop.git"
+    },
+    "keywords": [
+        "os"
+    ],
+    "author": "ice1",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/inf-hubof/donstop/issues"
+    },
+    "homepage": "https://github.com/inf-hubof/donstop#readme",
+    "devDependencies": {
+        "@eslint/js": "^9.22.0",
+        "@types/node": "^22.13.10",
+        "eslint": "^9.22.0",
+        "globals": "^16.0.0",
+        "prettier": "^3.5.3",
+        "typescript": "^5.8.2",
+        "typescript-eslint": "^8.27.0"
+    },
+    "dependencies": {
+        "chalk": "^4.1.2",
+        "uuid": "^11.1.0"
+    }
+}
