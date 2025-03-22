@@ -1,0 +1,8 @@
+.github
+src
+node_modules
+.gitignore
+.prettierrc
+eslint.config.mjs
+README.md
+tsconfig.json
