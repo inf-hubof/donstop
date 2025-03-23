@@ -2,6 +2,12 @@
 
 > Don't Stop! Donstop! Don't Stop! Donstop! Don't Stop! Donstop! Don't Stop! Donstop! Don't Stop! Donstop!
 
+### 스크린샷
+
+![flow_1](./images/flow-1.png)
+![flow_2](./images/flow-2.png)
+![flow_3](./images/flow-3.png)
+
 ### 주제
 
 CLI 환경에서 구현된 시스템 운영체제 (운영체제 아님)
