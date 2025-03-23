@@ -6,3 +6,5 @@ node_modules
 eslint.config.mjs
 README.md
 tsconfig.json
+.DS_Store
+images
