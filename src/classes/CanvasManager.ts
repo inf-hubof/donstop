@@ -5,6 +5,7 @@ import chalk from "chalk";
 // 키 모음
 export enum Key {
     EXIT = "\u0003",
+    ESC = "\x1b",
 
     ENTER = "\r",
     BACKSPACE = "\x7f",
@@ -317,7 +318,11 @@ export class CanvasManager {
                         content = " ".repeat(width);
                     }
                     process.stdout.write(
-                        background ? chalk`{${bgStyle} ${content}}` : content,
+                        background
+                            ? chalk`{${bgStyle} ${content}}`
+                            : object.style.color
+                              ? chalk`{${object.style.color} ${content}}`
+                              : content,
                     );
                 }
                 this.cursor.reset();

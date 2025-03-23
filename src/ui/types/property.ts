@@ -49,4 +49,5 @@ export type TStyle = {
         left?: number;
         right?: number;
     };
+    color?: TColor;
 };
