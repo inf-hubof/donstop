@@ -3,8 +3,9 @@ import { TObj } from "../types/object";
 
 export enum VarientType {
     DIRECTORY = "┌─╲____┐\n│      │\n│      │\n└──────┘",
-    FILE = " ╱────┐\n╱     │\n│     │\n└─────┘",
+    FILE = " ╱─────┐\n╱      │\n│      │\n└──────┘",
     TRASH = "  ┌┄┬┬┄┐\n ┌─┬──┬─┐\n ╲      ╱\n ┕━━━━━━┙",
+    HACK = "┎──━─┒\n╿    ┖─┑\n│      │\n┖━━────┛",
 }
 
 interface TIconProps {

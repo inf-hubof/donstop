@@ -1,17 +1,18 @@
 import { CanvasManager, Key } from "../classes/CanvasManager";
 import { TBox, TIcon, TLabel } from "../ui";
+
 import type { TObj } from "../ui/types/object";
 
 const SCREEN_WIDTH = process.stdout.columns;
 const SCREEN_HEIGHT = process.stdout.rows;
 
 interface FileEntry {
-    type: "DIRECTORY" | "FILE" | "PARENT" | "TRASH";
+    type: "DIRECTORY" | "FILE" | "PARENT" | "TRASH" | "HACK";
     name: string;
     children?: FileEntry[];
 }
 
-const structure: FileEntry = {
+const rootStructure: FileEntry = {
     type: "DIRECTORY",
     name: "(root)",
     children: [
@@ -36,57 +37,69 @@ const trashFolder: FileEntry = {
     children: [],
 };
 
-let currentStructure: FileEntry = structure;
+let currentStructure: FileEntry = rootStructure;
 const structureStack: FileEntry[] = [];
-let structureCurrentId: number | null = 0;
+let currentSelectedIndex: number = 0;
 
 let modalOpen = false;
-let modalSelected = 1;
+let modalSelectedOption = 1;
 let modalItemIndex: number | null = null;
 
-const createStructureItems = (): TObj[] => {
-    let children: FileEntry[] = currentStructure.children
+let currentFlow: "DESKTOP" | "TRASH" | "HACK" | "IN_DIRECTORY" = "DESKTOP";
+
+function getCurrentEntries(): FileEntry[] {
+    let entries = currentStructure.children
         ? [...currentStructure.children]
         : [];
 
     if (structureStack.length > 0)
-        children = [{ type: "PARENT", name: ".." }, ...children];
+        entries = [{ type: "PARENT", name: ".." }, ...entries];
 
     if (structureStack.length === 0 && currentStructure.type !== "TRASH")
-        children = [{ type: "TRASH", name: "(trash)" }, ...children];
+        entries = [
+            { type: "TRASH", name: "(trash)" },
+            { type: "HACK", name: "(hack)" },
+            ...entries,
+        ];
 
-    return children.reduce(
-        (prev, child, idx) => [
-            ...prev,
+    return entries;
+}
 
+function createStructureComponents(): TObj[] {
+    const entries = getCurrentEntries();
+
+    return entries.flatMap((entry, idx) => {
+        const baseX = 5 + idx * 14;
+
+        return [
             new TBox({
-                position: { x: 5 + idx * 14, y: 4 },
+                position: { x: baseX, y: 4 },
                 size: { width: 12, height: 6 },
                 style:
-                    structureCurrentId === idx
+                    currentSelectedIndex === idx
                         ? { border: { type: "solid", color: "cyan" } }
                         : undefined,
             }),
             new TIcon({
-                varient: child.type === "PARENT" ? "DIRECTORY" : child.type,
-                position: { x: 5 + idx * 14, y: 4 },
+                varient: entry.type === "PARENT" ? "DIRECTORY" : entry.type,
+                position: { x: baseX, y: 4 },
                 size: { width: 12, height: 6 },
             }),
             new TLabel({
-                position: { x: 5 + idx * 14, y: 10 },
+                position: { x: baseX, y: 10 },
                 size: { width: 12, height: 1 },
-                text: child.name,
+                text: entry.name,
             }),
-        ],
-        [] as TObj[],
-    );
-};
+        ];
+    });
+}
 
-const createModalComponents = (): TObj[] => {
+function createModalComponents(): TObj[] {
     if (!modalOpen) return [];
 
     const modalWidth = 30;
     const modalHeight = 7;
+
     const modalX = Math.floor((SCREEN_WIDTH - modalWidth) / 2);
     const modalY = Math.floor((SCREEN_HEIGHT - modalHeight) / 2);
 
@@ -105,18 +118,18 @@ const createModalComponents = (): TObj[] => {
         new TLabel({
             position: { x: modalX + 5, y: modalY + 4 },
             size: { width: 5, height: 1 },
-            text: modalSelected === 0 ? "[no]" : "no",
+            text: modalSelectedOption === 0 ? "[no]" : "no",
         }),
         new TLabel({
             position: { x: modalX + 20, y: modalY + 4 },
             size: { width: 5, height: 1 },
-            text: modalSelected === 1 ? "[yes]" : "yes",
+            text: modalSelectedOption === 1 ? "[yes]" : "yes",
         }),
     ];
-};
+}
 
-const components = {
-    container: [
+function createContainerComponents(): TObj[] {
+    return [
         new TBox({
             position: { x: 1, y: 1 },
             size: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
@@ -124,201 +137,168 @@ const components = {
         }),
         new TLabel({
             position: { x: 5, y: 2 },
-            size: { width: "desktop".length, height: 1 },
+            size: { width: currentFlow.toLowerCase().length, height: 1 },
             style: { color: "cyan" },
-            text: "desktop",
+            text: currentFlow.toLowerCase(),
         }),
-    ],
-    tutorial: [
-        new TBox({
-            position: { x: Math.floor(SCREEN_WIDTH / 4) * 3 - 1, y: 2 },
-            size: {
-                width: Math.ceil(SCREEN_WIDTH / 4),
-                height: SCREEN_HEIGHT - 2,
-            },
-            style: { border: { type: "double", color: "gray" } },
-        }),
-        ...(() => {
-            const tutorialItems = [
-                "move: ← →",
-                "click: enter ↵",
-                "remove: backspace ↤",
-            ];
-            return tutorialItems.map(
-                (item, idx) =>
-                    new TLabel({
-                        position: {
-                            x: Math.floor(SCREEN_WIDTH / 4) * 3 + 3,
-                            y: 4 + idx * 2,
-                        },
-                        size: { width: item.length, height: 1 },
-                        text: item,
-                    }),
+    ];
+}
+
+const tutorialComponents: TObj[] = [
+    new TBox({
+        position: { x: Math.floor(SCREEN_WIDTH / 4) * 3 - 1, y: 2 },
+        size: { width: Math.ceil(SCREEN_WIDTH / 4), height: SCREEN_HEIGHT - 2 },
+        style: { border: { type: "double", color: "gray" } },
+    }),
+    ...["move: ← →", "click: enter ↵", "remove: backspace ↤"].map(
+        (item, idx) =>
+            new TLabel({
+                position: {
+                    x: Math.floor(SCREEN_WIDTH / 4) * 3 + 3,
+                    y: 4 + idx * 2,
+                },
+                size: { width: item.length, height: 1 },
+                text: item,
+            }),
+    ),
+];
+
+function updateUIObjects() {
+    const baseComponents = [
+        ...createContainerComponents(),
+        ...tutorialComponents,
+        ...createStructureComponents(),
+    ];
+
+    manager.objects = modalOpen
+        ? [...baseComponents, ...createModalComponents()]
+        : baseComponents;
+}
+
+function handleModalKey(input: string) {
+    switch (input) {
+        case Key.ARROW_LEFT:
+            modalSelectedOption = Math.max(0, modalSelectedOption - 1);
+            break;
+
+        case Key.ARROW_RIGHT:
+            modalSelectedOption = Math.min(1, modalSelectedOption + 1);
+            break;
+
+        case Key.ENTER:
+            if (modalSelectedOption === 1 && modalItemIndex !== null)
+                trashFolder.children?.splice(modalItemIndex, 1);
+
+            modalOpen = false;
+            modalItemIndex = null;
+            break;
+
+        case Key.ESC:
+            modalOpen = false;
+            modalItemIndex = null;
+            break;
+    }
+
+    updateUIObjects();
+}
+
+function handleNavigationKey(input: string) {
+    const entries = getCurrentEntries();
+    const totalEntries = entries.length;
+
+    if (input === Key.EXIT) {
+        manager.cursor.show();
+        process.exit();
+    }
+
+    switch (input) {
+        case Key.ARROW_LEFT:
+            currentSelectedIndex = Math.max(0, currentSelectedIndex - 1);
+            break;
+
+        case Key.ARROW_RIGHT:
+            currentSelectedIndex = Math.min(
+                totalEntries - 1,
+                currentSelectedIndex + 1,
             );
-        })(),
-    ],
-    structureItems: createStructureItems(),
-};
+            break;
+
+        case Key.BACKSPACE: {
+            if (
+                ["TRASH", "HACK", "PARENT"].includes(
+                    entries[currentSelectedIndex].type,
+                )
+            )
+                break;
+
+            if (currentStructure.type === "TRASH") {
+                modalItemIndex = currentSelectedIndex - 1;
+                modalOpen = true;
+                modalSelectedOption = 1;
+
+                updateUIObjects();
+                return;
+            }
+
+            const actualIndex = currentSelectedIndex - 2;
+            if (!currentStructure.children || actualIndex < 0) break;
+
+            const removedItem = currentStructure.children.splice(
+                actualIndex,
+                1,
+            )[0];
+            if (removedItem) {
+                trashFolder.children = trashFolder.children || [];
+                trashFolder.children.push(removedItem);
+            }
+
+            currentSelectedIndex = 0;
+            break;
+        }
+
+        case Key.ENTER: {
+            const selected = entries[currentSelectedIndex];
+            if (!selected) break;
+
+            if (selected.type === "PARENT") {
+                currentFlow = "DESKTOP";
+                currentStructure = structureStack.pop() || currentStructure;
+            } else if (selected.type === "TRASH") {
+                currentFlow = "TRASH";
+                structureStack.push(currentStructure);
+                currentStructure = trashFolder;
+            } else if (selected.type === "HACK") {
+                currentFlow = "HACK";
+                manager.objects = [...createContainerComponents()];
+            } else if (selected.type === "DIRECTORY" && selected.children) {
+                currentFlow = "IN_DIRECTORY";
+                structureStack.push(currentStructure);
+                currentStructure = selected;
+            }
+
+            currentSelectedIndex = 0;
+            break;
+        }
+    }
+
+    updateUIObjects();
+}
 
 const manager = new CanvasManager({
     init: {
         objects: [
-            ...components.container,
-            ...components.tutorial,
-            ...components.structureItems,
+            ...createContainerComponents(),
+            ...tutorialComponents,
+            ...createStructureComponents(),
         ],
         listener: {
             keydown(input) {
                 if (modalOpen) {
-                    switch (input) {
-                        case Key.ARROW_LEFT:
-                            modalSelected = Math.max(0, modalSelected - 1);
-                            break;
-
-                        case Key.ARROW_RIGHT:
-                            modalSelected = Math.min(1, modalSelected + 1);
-                            break;
-
-                        case Key.ENTER:
-                            if (modalSelected === 1 && modalItemIndex !== null)
-                                trashFolder.children?.splice(modalItemIndex, 1);
-
-                            modalOpen = false;
-                            modalItemIndex = null;
-                            break;
-
-                        case Key.ESC:
-                            modalOpen = false;
-                            modalItemIndex = null;
-                            break;
-                    }
-
-                    manager.objects = [
-                        ...components.container,
-                        ...components.tutorial,
-                        ...createStructureItems(),
-                        ...createModalComponents(),
-                    ];
+                    handleModalKey(input);
                     return;
                 }
 
-                let children: FileEntry[] = currentStructure.children
-                    ? [...currentStructure.children]
-                    : [];
-
-                if (structureStack.length > 0)
-                    children = [{ type: "PARENT", name: ".." }, ...children];
-
-                if (
-                    structureStack.length === 0 &&
-                    currentStructure.type !== "TRASH"
-                )
-                    children = [
-                        { type: "TRASH", name: "(trash)" },
-                        ...children,
-                    ];
-
-                const childrenLength = children.length;
-
-                if (input === Key.EXIT) {
-                    manager.cursor.show();
-                    process.exit();
-                }
-
-                switch (input) {
-                    case Key.ARROW_LEFT: {
-                        if (structureCurrentId === null) structureCurrentId = 0;
-                        structureCurrentId = Math.max(
-                            0,
-                            structureCurrentId - 1,
-                        );
-                        break;
-                    }
-
-                    case Key.ARROW_RIGHT: {
-                        if (structureCurrentId === null) structureCurrentId = 0;
-                        structureCurrentId = Math.min(
-                            childrenLength - 1,
-                            structureCurrentId + 1,
-                        );
-                        break;
-                    }
-
-                    case Key.BACKSPACE: {
-                        if (currentStructure.type === "TRASH") {
-                            if (structureCurrentId === 0 || !structureCurrentId)
-                                break;
-
-                            modalItemIndex = structureCurrentId - 1;
-                            modalOpen = true;
-                            modalSelected = 1;
-
-                            manager.objects = [
-                                ...components.container,
-                                ...components.tutorial,
-                                ...createStructureItems(),
-                                ...createModalComponents(),
-                            ];
-                            break;
-                        }
-
-                        if (!structureCurrentId) break;
-
-                        const selected = children[structureCurrentId];
-                        if (
-                            selected.type === "PARENT" ||
-                            selected.type === "TRASH"
-                        )
-                            break;
-
-                        const actualIndex = structureCurrentId - 1;
-                        if (actualIndex < 0 || !currentStructure.children)
-                            break;
-
-                        const removed = currentStructure.children.splice(
-                            actualIndex,
-                            1,
-                        )[0];
-                        if (removed) {
-                            trashFolder.children = trashFolder.children || [];
-                            trashFolder.children.push(removed);
-                        }
-
-                        structureCurrentId = 0;
-                        break;
-                    }
-
-                    case Key.ENTER: {
-                        if (structureCurrentId === null) break;
-
-                        const selected = children[structureCurrentId];
-
-                        if (selected) {
-                            if (selected.type === "PARENT") {
-                                currentStructure =
-                                    structureStack.pop() || currentStructure;
-                            } else if (selected.type === "TRASH") {
-                                structureStack.push(currentStructure);
-                                currentStructure = trashFolder;
-                            } else if (
-                                selected.type === "DIRECTORY" &&
-                                selected.children
-                            ) {
-                                structureStack.push(currentStructure);
-                                currentStructure = selected;
-                            }
-                        }
-
-                        structureCurrentId = 0;
-                        break;
-                    }
-                }
-
-                manager.objects = [
-                    ...components.container,
-                    ...components.tutorial,
-                    ...createStructureItems(),
-                ];
+                handleNavigationKey(input);
             },
         },
     },
