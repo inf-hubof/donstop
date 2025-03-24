@@ -1,6 +1,6 @@
 {
     "name": "donstop",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "description": "그냥... 이상한 운영체제",
     "main": "build/app/index.js",
     "scripts": {
